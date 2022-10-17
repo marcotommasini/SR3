@@ -114,7 +114,8 @@ class UNET_SR3(nn.Module):
 
         self.output_conv = smallBlock(current_channel_input, out_channels, groups=norm_groups)
 
-    def forward(self, x, time):
+    def forward(self, x, time):git push -u origin main
+
 
         time = 0  #We need to define the network to adapt the size of the time embeding to the number of channels
 
@@ -140,4 +141,4 @@ class UNET_SR3(nn.Module):
                 x = layer(x)
 
         return self.output_conv(x)
-        
+
