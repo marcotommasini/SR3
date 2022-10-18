@@ -5,6 +5,20 @@ import torch.nn.functional as F
 import sys
 
 
+class TimeDimensionMatching(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        self.emb_layer = nn.Sequential(nn.SiLU(),
+            nn.Linear(in_channels, out_channels)) #this sequential matches the embedding dimension with the number of channels
+
+    def forward(self, x, time_embedded):
+        batch = x.shape[0]
+        out = self.emb_layer(time_embedded)[:, :, None, None].repeat(1,1,x.size(-2), x.size(-1))
+        out_final = x + self.emb_layer(time_embedded).view(batch, -1, 1, 1)
+        return out_final
+
+
+
 class SiLu(nn.Module):
     def forward(self, x):
         return x * torch.sigmoid(x)
@@ -28,7 +42,30 @@ class DownSample(nn.Module):    #Downsample the block by 2 and maintain the same
         
 
 class ResnetBlock(nn.Module):
-    pass
+    def __init__(self, dim, dim_out, time_embedding_dimension, dropout = 0, norm_groups = 32, use_attention = False):
+        super().__init__()
+        
+        self.addTime = TimeDimensionMatching(time_embedding_dimension, dim_out)
+        self.use_attention = use_attention
+        self.block1 = smallBlock(dim, dim_out, norm_groups)
+        self.block2 = smallBlock(dim, dim_out, norm_groups, dropout = dropout)
+        self.final_conv = nn.Conv2d(dim, dim_out, 1)
+
+        if use_attention:
+            self.att_block = SelfAttention(dim_out)
+
+    def forward(self, x_input, time_embedded):
+        x1 = self.block1(x_input)
+        x_emb = self.addTime(x1, time_embedded)
+        x2 = self.block2(x_emb)
+        x_output = x2 + self.final_conv(x_input)
+
+        if not self.use_attention:
+            return x_output
+        else:
+            return self.att_block(x_output)
+
+
 
 class smallBlock(nn.Module):
     def __init__(self, dim, dim_out, groups=32, dropout=0):
@@ -42,8 +79,30 @@ class smallBlock(nn.Module):
     def forward(self, x):
         return self.block(x)
 
-class SelfAttention(nn.Module):
-    pass
+
+
+class SelfAttention(nn.Module):     #Standard attention block
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_channels = in_channels
+        self.mha = nn.MultiheadAttention(in_channels, 4, batch_first=True)
+        self.layer_norm = nn.LayerNorm([in_channels])
+
+        self.feed_forward = nn.Sequential(
+            nn.LayerNorm([in_channels]),
+            nn.Linear(in_channels, in_channels),
+            nn.GELU(),
+            nn.Linear(in_channels, in_channels),)
+    def forward(self, x):
+        batch, channels, size_y, size_x = x.size()
+        x = x.view(-1, self.in_channels, int(size_y**2)).swapaxes(1,2)
+
+        norm_x = self.layer_norm(x)
+        attention_value, _ = self.mha(norm_x, norm_x, norm_x)
+        attention_value = attention_value + x
+        attention_value = self.feed_forward(attention_value) + attention_value
+        output = attention_value.swapaxes(2, 1).view(-1, self.in_channels, self.dimension_input_image, self.dimension_input_image)
+        return output
 
 
 class UNET_SR3(nn.Module):
