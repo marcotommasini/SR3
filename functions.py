@@ -1,5 +1,4 @@
 import os
-from re import X
 import torch
 import torch.nn as nn
 import argparse
@@ -57,6 +56,7 @@ class operations:
             epoch = 0
 
         while epoch < self.args.number_epochs:
+            #Need to add the Warmup scedule for the learning rate
             list_losses = []
             with tqdm(dataloader, unit="batch") as tepoch:
                 for i, data in enumerate(tepoch):
