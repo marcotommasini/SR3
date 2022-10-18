@@ -10,6 +10,26 @@ def sin_time_embeding(t, number_channels = 256):
   pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=-1)
   return pos_enc
 
+
+class image_process:
+  def __init__(self):
+    pass
+  def image_upscale(x_low, x_high):
+    batch, channels, y_size = x_size = x_high.size()
+    pass
+
+
+class warmup_LR():
+  def __init__(self, optmizer, intial_value, final_value, number_steps):
+    self.opt = optmizer
+    self.initial_value = intial_value
+    self.final_value = final_value
+    self.values = torch.linspace(intial_value, final_value, number_steps)
+
+  def linear(self, current_step):
+    self.opt.param_groups[0]['lr'] = self.values[current_step]
+	  
+
 class beta_schedule():
   def __init__(self, beta_start, beta_end, number_timesteps):
     self.beta_start = beta_start
@@ -34,3 +54,5 @@ class beta_schedule():
     alphas_cumprod = alphas_cumprod / alphas_cumprod[0]
     betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
     return torch.clip(betas, self.beta_start, self.beta_end)
+
+
