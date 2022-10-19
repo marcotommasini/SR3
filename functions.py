@@ -53,9 +53,6 @@ class operations:
         return part1 * x + part2 * noise, noise
 
 
-    def sample_image(self,model, x_low_res ):
-        pass
-
 
     def train_model(self, model, dataloader, optmizer, loss, model_checkpoint = None):
         LRS = warmup_LR(optmizer, self.args.initial_learning_rate, self.args.final_learning_rate, number_steps=1000)
