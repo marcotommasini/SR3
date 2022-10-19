@@ -68,6 +68,6 @@ class DataSet_Faces(data.Dataset):
         image_LOW_tr = transform_HIGH(image_LOW)
 
 
-    return image_HIGH_tr, image_LOW_tr
+        return image_HIGH_tr, image_LOW_tr
         
         
