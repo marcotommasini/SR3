@@ -26,7 +26,6 @@ class image_process:
 
     
 
-
 class warmup_LR():
   def __init__(self, optmizer, intial_value, final_value, number_steps):
     self.opt = optmizer
