@@ -69,7 +69,7 @@ class operations:
             list_losses = []
             with tqdm(dataloader, unit="batch") as tepoch:
                 for i, data in enumerate(tepoch):
-                    self.learning_rate = LRS.linear(self.counter_iterations) #updating the value of the learning rate
+                    self.learning_rate = LRS.linear(i) #updating the value of the learning rate
 
                     tepoch.set_description(f"Epoch {epoch}")
                     optmizer.zero_grad()
@@ -101,7 +101,6 @@ class operations:
 
                     tepoch.set_postfix(loss=Lsimple.item())
 
-                    self.counter_iterations += 1    #++1 on the counter for the warmup schedule
                 epoch += 1
 
                 EPOCH = epoch
