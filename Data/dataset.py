@@ -11,6 +11,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from PIL import Image
+import zipfile
 
 
 def get_mean_std(loader):
@@ -39,6 +40,9 @@ def get_mean_std(loader):
 
     return values_HIGH, values_LOW
 
+def unzip_file(input_directory, output_directory):
+    with zipfile.ZipFile(input_directory, 'r') as zip_ref:
+        zip_ref.extractall(output_directory)
 
 class DataSet_Faces(data.Dataset):
     def __init__(self, dataset_directory = None, image_dimensions = (128,128), downsample_dimensions = (16,16), norm_HIGH = None, norm_LOW = None):
@@ -58,11 +62,17 @@ class DataSet_Faces(data.Dataset):
 
         image_HIGH = np.asarray(Image.open(img_path).convert("RGB")
         image_LOW = image_HIGH.resize( self.downsample_dimensions, Image.ANTIALIAS)
-
-        transform_LOW = transforms.Compose([transforms.ToTensor(),\
-                                            transforms.normalize(self.norm_HIGH[0], self.norm_HIGH[1])])
-        transform_HIGH = transforms.Compose([transforms.ToTensor(),\
-                                            transforms.normalize(self.norm_LOW[0], self.norm_LOW[1])])
+        
+        if self.norm_HIGH not None and self.norm_LOW not None:
+            transform_LOW = transforms.Compose([transforms.ToTensor()])
+                                               
+            transform_HIGH = transforms.Compose([transforms.ToTensor()])
+                                            
+        else:
+            transform_LOW = transforms.Compose([transforms.ToTensor(),\
+                                                transforms.normalize(self.norm_HIGH[0], self.norm_HIGH[1])])
+            transform_HIGH = transforms.Compose([transforms.ToTensor(),\
+                                                transforms.normalize(self.norm_LOW[0], self.norm_LOW[1])])
 
         image_HIGH_tr = transform_LOW(image_HIGH)
         image_LOW_tr = transform_HIGH(image_LOW)
