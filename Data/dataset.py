@@ -60,19 +60,20 @@ class DataSet_Faces(data.Dataset):
     def __getitem__(self, index):
         img_path = os.path.join(self.dataset_directory, self.list_images[index])
 
-        image_HIGH = np.asarray(Image.open(img_path).convert("RGB")
+        image_HIGH = np.asarray(Image.open(img_path).convert("RGB"))
         image_LOW = image_HIGH.resize( self.downsample_dimensions, Image.ANTIALIAS)
         
-        if self.norm_HIGH not None and self.norm_LOW not None:
+        
+        if self.norm_HIGH == None and self.norm_LOW == None:
+            transform_LOW = transforms.Compose([transforms.ToTensor(),\
+                                                transforms.normalize(self.norm_HIGH[0], self.norm_HIGH[1])])
+            transform_HIGH = transforms.Compose([transforms.ToTensor(),\
+                                            transforms.normalize(self.norm_LOW[0], self.norm_LOW[1])])
+        else:
             transform_LOW = transforms.Compose([transforms.ToTensor()])
                                                
             transform_HIGH = transforms.Compose([transforms.ToTensor()])
                                             
-        else:
-            transform_LOW = transforms.Compose([transforms.ToTensor(),\
-                                                transforms.normalize(self.norm_HIGH[0], self.norm_HIGH[1])])
-            transform_HIGH = transforms.Compose([transforms.ToTensor(),\
-                                                transforms.normalize(self.norm_LOW[0], self.norm_LOW[1])])
 
         image_HIGH_tr = transform_LOW(image_HIGH)
         image_LOW_tr = transform_HIGH(image_LOW)

@@ -4,6 +4,8 @@ import torch.nn as nn
 import argparse
 import numpy as np
 from model import UNET_SR3
+from functions import operations
+from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
 
 
 
@@ -25,11 +27,14 @@ def main(params):
     parser.add_argument('--initial_learning_rate', type=float, default=1e-6, help='Initial learning rate of the optmizer')
     parser.add_argument('--final_learning_rate', type=float, default=1e-4, help='Initial learning rate of the optmizer')
     parser.add_argument('--checkpoint_directory', type=str, default="", help='')
+    parser.add_argument('--dataset_directory', type=str, default="", help='')
+    parser.add_argument('--zipped_dataset_directory', type=str, default="", help='')
+    parser.add_argument('--get_mean_std', type=int, default=0, help='Boolean for gathering the dataset MEAN and STD for normalization')
 
     args = parser.parse_args(params)
 
-    #Generate a dataset and a dataloader class
-
+    #UNZIP the file 
+    unzip_file(args.zipped_dataset_directory, args.dataset_directory)
 
     model = UNET_SR3()
 
