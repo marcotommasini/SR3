@@ -41,7 +41,7 @@ def main():
 
     #Load the dataloader object already with batch 16
 
-    dataloader = torch.load("Data\\dataloader.pth")
+    dataloader = torch.load(args.dataset_directory)
 
     model = UNET_SR3()
 
