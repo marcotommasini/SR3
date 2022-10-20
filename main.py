@@ -27,9 +27,9 @@ def main():
     parser.add_argument('--number_epochs', type=int, default=50, help='Number of epochs the model will learn from')
     parser.add_argument('--initial_learning_rate', type=float, default=1e-6, help='Initial learning rate of the optmizer')
     parser.add_argument('--final_learning_rate', type=float, default=1e-4, help='Initial learning rate of the optmizer')
-    parser.add_argument('CD','--checkpoint_directory', type=str, default="", help='Input Checkpoints directory')
-    parser.add_argument('DD', '--dataset_directory', type=str, default="", help='FIle with images')
-    parser.add_argument('ZDD', '--zipped_dataset_directory', type=str, default="", help='Zipped file to be unzipped')
+    parser.add_argument('-CD','--checkpoint_directory', type=str, default="", help='Input Checkpoints directory')
+    parser.add_argument('-DD', '--dataset_directory', type=str, default="", help='FIle with images')
+    parser.add_argument('-ZDD', '--zipped_dataset_directory', type=str, default="", help='Zipped file to be unzipped')
 
     args = parser.parse_args()
 
