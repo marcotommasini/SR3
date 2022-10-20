@@ -8,9 +8,9 @@ import os
 import torch
 import torch.nn as nn
 import numpy as np
-from functions import operations
-from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
 from torch.utils.data import DataLoader
+
+from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
 
 
 
