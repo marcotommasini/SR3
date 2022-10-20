@@ -8,9 +8,7 @@ import numpy as np
 from model import UNET_SR3
 from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
 from torch.utils.data import DataLoader
-from utils import get_statistical_parameters
 from functions import operations as op
-from torchnet.dataset import transformdataset
 import torchvision.transforms as transforms
 
 
