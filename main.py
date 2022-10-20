@@ -1,3 +1,4 @@
+from multiprocessing import get_start_method
 import os
 import torch
 import torch.nn as nn
@@ -6,8 +7,9 @@ import numpy as np
 from model import UNET_SR3
 from functions import operations
 from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
-
-
+from torch.utils.data import DataLoader
+from utils import get_statistical_parameters
+from utils import operations as op
 
 def main(params):
     parser = argparse.ArgumentParser(description='Diffusion model')
@@ -33,11 +35,25 @@ def main(params):
 
     args = parser.parse_args(params)
 
-    #UNZIP the file 
-    unzip_file(args.zipped_dataset_directory, args.dataset_directory)
+    #UNZIP the file and get statistical parameters
+    stats_HIGH, stats_LOW = get_statistical_parameters(args.zipped_dataset_directory, args.dataset_directory)
+
+    #Load data and create datalaoder
+    dataset = DataSet_Faces(args.dataset_directory, norm_HIGH = stats_HIGH, norm_LOW = stats_LOW)
+    dataloader = DataLoader(dataset, args.batch_size, num_workers=4, drop_last=True)
 
     model = UNET_SR3()
 
     optmizer = torch.optim.Adam(model.parameters(), lr=args.initial_learning_rate)
 
     loss = nn.MSELoss()
+
+    op_object = op(args)
+
+    op_object.train_model(model, dataloader, optmizer, loss)
+
+    
+
+
+
+    
