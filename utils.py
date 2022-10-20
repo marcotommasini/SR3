@@ -65,8 +65,9 @@ class beta_schedule():
     return torch.clip(betas, self.beta_start, self.beta_end)
 
 
-def get_statistical_parameters(zipped_directory, images_directory, batch_size):
-    unzip_file(zipped_directory, images_directory)
+def get_statistical_parameters(zipped_directory, images_directory, batch_size, unzip_files):
+    if unzip_files == 1:
+      unzip_file(zipped_directory, images_directory)
     dataset_faces = DataSet_Faces(images_directory)
     dataloader_faces = DataLoader(DataSet_Faces, batch_size = batch_size)
     return get_mean_std(dataloader_faces)

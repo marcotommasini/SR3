@@ -1,3 +1,4 @@
+from ast import arg
 from multiprocessing import get_start_method
 import os
 import torch
@@ -30,6 +31,7 @@ def main():
     parser.add_argument('-CD','--checkpoint_directory', type=str, default="", help='Input Checkpoints directory')
     parser.add_argument('-DD', '--dataset_directory', type=str, default="", help='FIle with images')
     parser.add_argument('-ZDD', '--zipped_dataset_directory', type=str, default="", help='Zipped file to be unzipped')
+    parser.add_argument('-UZF', '--unzip_files', type=int, default=0, help='zip or unzip files')
 
     args = parser.parse_args()
 
@@ -38,7 +40,10 @@ def main():
     print(args.zipped_dataset_directory)
 
     #UNZIP the file and get statistical parameters
-    stats_HIGH, stats_LOW = get_statistical_parameters(args.zipped_dataset_directory, args.dataset_directory,batch_size=args.batch_size)
+    stats_HIGH, stats_LOW = get_statistical_parameters(args.zipped_dataset_directory,\
+                                                         args.dataset_directory,\
+                                                         batch_size=args.batch_size,\
+                                                         unzip_files = args.unzip_files)
 
     #Load data and create datalaoder
     dataset = DataSet_Faces(args.dataset_directory, norm_HIGH = stats_HIGH, norm_LOW = stats_LOW)
