@@ -33,6 +33,10 @@ def main():
 
     args = parser.parse_args()
 
+    print(args.checkpoint_directory)
+    print(args.dataset_directory)
+    print(args.zipped_dataset_directory)
+
     #UNZIP the file and get statistical parameters
     stats_HIGH, stats_LOW = get_statistical_parameters(args.zipped_dataset_directory, args.dataset_directory,batch_size=args.batch_size)
 
