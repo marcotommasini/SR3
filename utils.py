@@ -2,16 +2,12 @@
 import torch
 import torch.nn.functional as F
 import sys
-
-
 import os
 import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
-
 from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
-
 
 
 
@@ -64,11 +60,4 @@ class beta_schedule():
     betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
     return torch.clip(betas, self.beta_start, self.beta_end)
 
-
-def get_statistical_parameters(zipped_directory, images_directory, batch_size, unzip_files):
-    if unzip_files == 1:
-      unzip_file(zipped_directory, images_directory)
-    dataset_faces = DataSet_Faces(images_directory)
-    dataloader_faces = DataLoader(DataSet_Faces, batch_size = batch_size)
-    return get_mean_std(dataloader_faces)
 

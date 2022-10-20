@@ -10,6 +10,9 @@ from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
 from torch.utils.data import DataLoader
 from utils import get_statistical_parameters
 from functions import operations as op
+from torchnet.dataset import transformdataset
+import torchvision.transforms as transforms
+
 
 def main():
     parser = argparse.ArgumentParser(description='Diffusion model')
@@ -22,7 +25,7 @@ def main():
     parser.add_argument('--beta_end', type=float, default=0.02, help='Last value of beta')
     parser.add_argument('--beta_curve', type=str, default="linear", help='How the value of beta will change over time')
     parser.add_argument('--target_image_size', type=int, default=128, help='Size of the squared input image')
-    parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--number_workers', type=int, default=2, help='Number of workers for the dataloader')
     parser.add_argument('--number_steps', type=int, default=200, help='How many iterations steps the model will learn from')
     parser.add_argument('--number_epochs', type=int, default=50, help='Number of epochs the model will learn from')
@@ -30,24 +33,15 @@ def main():
     parser.add_argument('--final_learning_rate', type=float, default=1e-4, help='Initial learning rate of the optmizer')
     parser.add_argument('-CD','--checkpoint_directory', type=str, default="", help='Input Checkpoints directory')
     parser.add_argument('-DD', '--dataset_directory', type=str, default="", help='FIle with images')
-    parser.add_argument('-ZDD', '--zipped_dataset_directory', type=str, default="", help='Zipped file to be unzipped')
-    parser.add_argument('-UZF', '--unzip_files', type=int, default=0, help='zip or unzip files')
 
     args = parser.parse_args()
 
     print(args.checkpoint_directory)
     print(args.dataset_directory)
-    print(args.zipped_dataset_directory)
 
-    #UNZIP the file and get statistical parameters
-    stats_HIGH, stats_LOW = get_statistical_parameters(args.zipped_dataset_directory,\
-                                                         args.dataset_directory,\
-                                                         batch_size=args.batch_size,\
-                                                         unzip_files = args.unzip_files)
+    #Load the dataloader object already with batch 16
 
-    #Load data and create datalaoder
-    dataset = DataSet_Faces(args.dataset_directory, norm_HIGH = stats_HIGH, norm_LOW = stats_LOW)
-    dataloader = DataLoader(dataset, args.batch_size, num_workers=4, drop_last=True)
+    dataloader = torch.load("Data\\dataloader.pth")
 
     model = UNET_SR3()
 

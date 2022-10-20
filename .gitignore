@@ -2,3 +2,14 @@ venv
 
 UNET.py
 main_old.py
+thumbnails128x128
+
+
+save_dataloader
+Data/mean_std_LOW.npy
+Data/mean_std_HIGH.npy
+Data/__pycache__/dataset.cpython-310.pyc
+dataset_transform.py
+save_dataloader.py
+Data/MEAN_STD/mean_std_HIGH.npy
+Data/MEAN_STD/mean_std_LOW.npy
