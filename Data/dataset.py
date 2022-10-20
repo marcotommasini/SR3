@@ -61,14 +61,14 @@ class DataSet_Faces(data.Dataset):
         img_path = os.path.join(self.dataset_directory, self.list_images[index])
 
         image_HIGH = np.asarray(Image.open(img_path).convert("RGB"))
-        image_LOW = image_HIGH.resize( self.downsample_dimensions, Image.ANTIALIAS)
+        image_LOW = image_HIGH.resize(self.downsample_dimensions, Image.ANTIALIAS)
         
         
         if self.norm_HIGH == None and self.norm_LOW == None:
             transform_LOW = transforms.Compose([transforms.ToTensor(),\
-                                                transforms.normalize(self.norm_HIGH[0], self.norm_HIGH[1])])
+                                                transforms.normalize((self.norm_HIGH[0]), (self.norm_HIGH[1]))])
             transform_HIGH = transforms.Compose([transforms.ToTensor(),\
-                                            transforms.normalize(self.norm_LOW[0], self.norm_LOW[1])])
+                                            transforms.normalize((self.norm_LOW[0]), (self.norm_LOW[1]))])
         else:
             transform_LOW = transforms.Compose([transforms.ToTensor()])
                                                
@@ -81,4 +81,12 @@ class DataSet_Faces(data.Dataset):
 
         return image_HIGH_tr, image_LOW_tr
         
-        
+class image_process:
+  def image_upscale(self, x_low, x_high_size):
+    output_size = x_high_size
+    up_object = torch.nn.Upsample(size = output_size, mode= "bilinear")
+    up_image = up_object(x_low)
+    return up_image
+
+  def crop_images(self):
+    pass

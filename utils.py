@@ -3,6 +3,18 @@ import torch
 import torch.nn.functional as F
 import sys
 
+
+import os
+import torch
+import torch.nn as nn
+import numpy as np
+from functions import operations
+from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
+from torch.utils.data import DataLoader
+
+
+
+
 def sin_time_embeding(t, number_channels = 256):
   inv_freq = 1.0 / (10000 ** (torch.arange(0, number_channels, 2).float() / number_channels)).to("cuda")
   pos_enc_a = torch.sin(t.repeat(1, number_channels // 2) * inv_freq)
@@ -10,21 +22,6 @@ def sin_time_embeding(t, number_channels = 256):
   pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=-1)
   return pos_enc
 
-
-class image_process:
-  def __init__(self):
-    pass
-
-  def image_upscale(self, x_low, x_high_size):
-    output_size = x_high_size
-    up_object = torch.nn.Upsample(size = output_size, mode= "bilinear")
-    up_image = up_object(x_low)
-    return up_image
-
-  def crop_images(self):
-    pass
-
-    
 
 class warmup_LR():
   def __init__(self, optmizer, intial_value, final_value, number_steps):
@@ -42,7 +39,6 @@ class warmup_LR():
     return self.opt.param_groups[0]['lr']
 
 	  
-
 class beta_schedule():
   def __init__(self, beta_start, beta_end, number_timesteps):
     self.beta_start = beta_start
@@ -68,4 +64,10 @@ class beta_schedule():
     betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
     return torch.clip(betas, self.beta_start, self.beta_end)
 
+
+def get_statistical_parameters(zipped_directory, images_directory, batch_size):
+    unzip_file(zipped_directory, images_directory)
+    dataset_faces = DataSet_Faces(images_directory)
+    dataloader_faces = DataLoader(DataSet_Faces, batch_size = batch_size)
+    return get_mean_std(dataloader_faces)
 

@@ -3,13 +3,13 @@ import torch
 import torch.nn as nn
 import argparse
 import numpy as np
-from utils import beta_schedule, sin_time_embeding, image_process, warmup_LR
+from utils import beta_schedule, sin_time_embeding, warmup_LR
 from functools import partial
 from tqdm import tqdm
-
+from Data.dataset import image_process
 
 class operations:
-    def __init__(self, args, number_noise_steps = 1000, beta_start = 1e-4, beta_end = 0.02, target_image_size = 128):
+    def __init__(self, args):
         self.number_noise_steps = args.number_noise_steps
         self.beta_start = args.beta_start
         self.beta_end = args.beta_end
