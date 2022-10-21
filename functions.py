@@ -32,7 +32,7 @@ class operations:
         elif args.noise_schedule == "cosine":
             self.beta = schedule.cosine()
         
-        beta_buffer = self.betas.detach().cpu().numpy()
+        beta_buffer = self.beta.detach().cpu().numpy()
         self.alpha = 1 - self.beta
         self.gamma = torch.cumprod(self.alpha, dim = 0)
         self.gamma_prev = np.append(1., self.gamma[:-1])

@@ -145,11 +145,11 @@ class UNET_SR3(nn.Module):
             use_attention = (current_resolution == resolution_to_use_attention)
 
             for j in range(self.number_res_packs):
-                DOWNS.append([ResnetBlock(current_channel_input, current_channel_output,\
+                DOWNS.append(ResnetBlock(current_channel_input, current_channel_output,\
                                 time_embedding_dimension = self.time_embedding_dimension, \
-                                dropout=dropout, with_attn=use_attention)])
+                                dropout=dropout, use_attention=use_attention))
                                 
-                featured_channels.append()  #This serves so that in the upsample block they know how to concatenate the skip connections
+                featured_channels.append(current_channel_input)  #This serves so that in the upsample block they know how to concatenate the skip connections
                 current_channel_input = current_channel_output
                 
                 if flag_last == False:
@@ -161,10 +161,10 @@ class UNET_SR3(nn.Module):
     	
         #Middle blocks
         self.middle = nn.ModuleList([ResnetBlock(current_channel_input, current_channel_input,\
-                                     time_embedding_dimension = self.time_embedding_dimension, dropout=dropout, with_attn=True),
+                                     time_embedding_dimension = self.time_embedding_dimension, dropout=dropout, use_attention=True),
 
                                     ResnetBlock(current_channel_input, current_channel_input,\
-                                        time_embedding_dimension = self.time_embedding_dimension, dropout=dropout, with_attn=False)])
+                                        time_embedding_dimension = self.time_embedding_dimension, dropout=dropout, use_attention=False)])
         
         #Up blocks
         UPS = []
@@ -176,7 +176,7 @@ class UNET_SR3(nn.Module):
 
                 UPS.append(ResnetBlock(current_channel_input+featured_channels.pop(), current_channel_output, \
                             time_embedding_dimension= self.time_embedding_dimension,\
-                            dropout=dropout, with_attn=use_attention))
+                            dropout=dropout, use_attention=use_attention))
                 current_channel_input = current_channel_output
                 if flag_last == False:
                     UPS.append(UpSample(current_channel_input))

@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--number_noise_steps', type=int, default=1000, help='Numbe of steps required to noise the image')
     parser.add_argument('--beta_start', type=float, default=1e-4, help='First value of beta')
     parser.add_argument('--beta_end', type=float, default=0.02, help='Last value of beta')
-    parser.add_argument('--beta_curve', type=str, default="linear", help='How the value of beta will change over time')
+    parser.add_argument('--noise_schedule', type=str, default="linear", help='How the value of beta will change over time')
     parser.add_argument('--target_image_size', type=int, default=128, help='Size of the squared input image')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--number_workers', type=int, default=2, help='Number of workers for the dataloader')
