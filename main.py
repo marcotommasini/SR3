@@ -6,17 +6,15 @@ import torch.nn as nn
 import argparse
 import numpy as np
 from model import UNET_SR3
-from Data.dataset import get_mean_std, Dataset
+from dataset import Dataset
 from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
-from Data.dataset import compute_metrics_images
-
 
 def main(param):
     parser = argparse.ArgumentParser(description='Diffusion model')
 
-    parser.add_argument('--device', type=str, default="cuda", help='Device to run the code on')
+    parser.add_argument('--device', type=str, default="cpu", help='Device to run the code on')
     parser.add_argument('--use_checkpoints', type=str, default="False", help='Use checkpoints')
     parser.add_argument('--emb_dimension', type=int, default=256, help='Number of embeded time dimension')
     parser.add_argument('--number_noise_steps', type=int, default=1000, help='Numbe of steps required to noise the image')
@@ -55,7 +53,7 @@ def main(param):
 
     dataloader = DataLoader(dataset, args.batch_size, drop_last=True)
 
-    model = UNET_SR3()
+    model = UNET_SR3().to(args.device)
 
     optmizer = torch.optim.Adam(model.parameters(), lr=args.initial_learning_rate)
 
@@ -66,7 +64,7 @@ def main(param):
     op_object.train_model(model, dataloader, optmizer, loss)
 
 if __name__ == "__main__":
-    main([])
+    main(['--dataset_directory', 'Data\\thumbnails128x128'])
     
 
 
