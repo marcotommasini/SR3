@@ -48,7 +48,7 @@ class ResnetBlock(nn.Module):
         self.addTime = TimeDimensionMatching(time_embedding_dimension, dim_out)
         self.use_attention = use_attention
         self.block1 = smallBlock(dim, dim_out, norm_groups)
-        self.block2 = smallBlock(dim, dim_out, norm_groups, dropout = dropout)
+        self.block2 = smallBlock(dim_out, dim_out, norm_groups, dropout = dropout)
         self.final_conv = nn.Conv2d(dim, dim_out, 1)
 
         if use_attention:
@@ -101,7 +101,7 @@ class SelfAttention(nn.Module):     #Standard attention block
         attention_value, _ = self.mha(norm_x, norm_x, norm_x)
         attention_value = attention_value + x
         attention_value = self.feed_forward(attention_value) + attention_value
-        output = attention_value.swapaxes(2, 1).view(-1, self.in_channels, self.dimension_input_image, self.dimension_input_image)
+        output = attention_value.swapaxes(2, 1).view(-1, self.in_channels, size_y, size_x)
         return output
 
 
@@ -130,6 +130,7 @@ class UNET_SR3(nn.Module):
         resolution_to_use_attention = 8
         dropout = 0
         
+
         #I will add each block to a list and then use the module function to make it into a sequential
 
         #Downs blocks
@@ -137,7 +138,6 @@ class UNET_SR3(nn.Module):
         DOWNS = [nn.Conv2d(self.in_channels, self.inner_channel, kernel_size=3, padding=1)]
         flag_last = False
         for index in range(num_multipliers):
-
             flag_last = (index == num_multipliers - 1)  #Checks if this is the final iteration
             current_channel_output = self.inner_channel * self.channels_multipliers[index]
             use_attention = (current_resolution == resolution_to_use_attention)
@@ -147,13 +147,13 @@ class UNET_SR3(nn.Module):
                                 time_embedding_dimension = self.time_embedding_dimension, \
                                 dropout=dropout, use_attention=use_attention))
                                 
-                featured_channels.append(current_channel_input)  #This serves so that in the upsample block they know how to concatenate the skip connections
+                featured_channels.append(current_channel_output)  #This serves so that in the upsample block they know how to concatenate the skip connections
                 current_channel_input = current_channel_output
                 
-                if flag_last == False:
-                    DOWNS.append(DownSample(current_channel_input))
-                    featured_channels.append(current_channel_input)
-                    current_resolution = current_resolution/2
+            if not flag_last:   
+                DOWNS.append(DownSample(current_channel_input))
+                featured_channels.append(current_channel_input)
+                current_resolution = current_resolution/2
 
         self.downs = nn.ModuleList(DOWNS)   #Creating the sequential with the downblocks
     	
@@ -170,15 +170,14 @@ class UNET_SR3(nn.Module):
             flag_last = (index == 0)
             use_attention = (current_resolution == resolution_to_use_attention)
             current_channel_output = self.inner_channel * self.channels_multipliers[index]
-            for j in range(0, self.number_res_packs +1):
-
+            for j in range(0, self.number_res_packs + 1):
                 UPS.append(ResnetBlock(current_channel_input+featured_channels.pop(), current_channel_output, \
                             time_embedding_dimension= self.time_embedding_dimension,\
                             dropout=dropout, use_attention=use_attention))
                 current_channel_input = current_channel_output
-                if flag_last == False:
-                    UPS.append(UpSample(current_channel_input))
-                    current_resolution = current_resolution * 2
+            if flag_last == False:
+                UPS.append(UpSample(current_channel_input))
+                current_resolution = current_resolution * 2
         self.ups = nn.ModuleList(UPS)
 
         self.output_conv = smallBlock(current_channel_input, out_channels)
@@ -186,24 +185,26 @@ class UNET_SR3(nn.Module):
     def forward(self, x, time):
 
         skip_features = []
-        for layer in self.downs:
+        for position_down, layer in enumerate(self.downs):
+            print("down")
             if isinstance(layer, ResnetBlock):
                 x = layer(x, time)
             else:
                 x = layer(x)
             skip_features.append(x)  #This will save all the intermediate values so they can be passed to the upsample
         
-        for layer in self.middle:
+        for position_mid, layer in enumerate(self.middle):
             if isinstance(layer, ResnetBlock):
                 x = layer(x, time)
             else:
                 x = layer(x)
-            skip_features.append(x)  #This will save all the intermediate values so they can be passed to the upsample
         
-        for layer in self.ups:
+        for position_up, layer in enumerate(self.ups):
+            print("up")
             if isinstance(layer, ResnetBlock):
                 x = layer(torch.cat((x, skip_features.pop()), dim=1), time)
             else:
+
                 x = layer(x)
 
         return self.output_conv(x)

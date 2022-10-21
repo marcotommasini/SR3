@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader
 
 
 
-def sin_time_embeding(t, number_channels = 256):
-  inv_freq = 1.0 / (10000 ** (torch.arange(0, number_channels, 2).float() / number_channels)).to("cuda")
+def sin_time_embeding(t, number_channels = 256, device = "cuda"):
+  inv_freq = 1.0 / (10000 ** (torch.arange(0, number_channels, 2).float() / number_channels)).to(device)
   pos_enc_a = torch.sin(t.repeat(1, number_channels // 2) * inv_freq)
   pos_enc_b = torch.cos(t.repeat(1, number_channels // 2) * inv_freq)
   pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=-1)

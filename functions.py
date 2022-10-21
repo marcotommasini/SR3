@@ -6,7 +6,7 @@ import numpy as np
 from utils import beta_schedule, sin_time_embeding, warmup_LR
 from functools import partial
 from tqdm import tqdm
-from Data.dataset import image_process
+from dataset import image_process
 
 class operations:
     def __init__(self, args):
@@ -19,7 +19,6 @@ class operations:
         self.learning_rate = 0
 
         schedule = beta_schedule(self.beta_start, self.beta_end, self.number_noise_steps)
-        self.to_torch = partial(torch.tensor, dtype=torch.float32, device=self.device)
         self.IP = image_process()
 
 
@@ -32,18 +31,12 @@ class operations:
         elif args.noise_schedule == "cosine":
             self.beta = schedule.cosine()
         
-        beta_buffer = self.beta.detach().cpu().numpy()
         self.alpha = 1 - self.beta
         self.gamma = torch.cumprod(self.alpha, dim = 0)
-        self.gamma_prev = np.append(1., self.gamma[:-1])
-        self.sqrt_gamma_prev = np.sqrt(self.gamma_prev)
+        self.gamma_prev = torch.tensor(np.append(1., self.gamma[:-1]), dtype=torch.float32).to(self.device)
+        self.sqrt_gamma_prev = torch.sqrt(self.gamma_prev)
 
         self.counter_iterations = 0
-
-        self.alpha = self.to_torch(self.alpha)
-        self.gamma = self.to_torch(self.gamma)
-        self.gamma_prev = self.to_torch(self.gamma_prev)
-        self.sqrt_gamma_prev = self.to_torch(self.sqrt_gamma_prev)
 
 
     def produce_noise(self, x, time_position):      #returns the noised image with a sample of a normal distribution
@@ -55,6 +48,7 @@ class operations:
 
 
     def train_model(self, model, dataloader, optmizer, loss, model_checkpoint = None):
+        model.train()
         LRS = warmup_LR(optmizer, self.args.initial_learning_rate, self.args.final_learning_rate, number_steps=1000)
         
         if self.args.use_checkpoints == "True" and model_checkpoint != None:  #Load the checkpoints of the model
@@ -74,24 +68,23 @@ class operations:
                     tepoch.set_description(f"Epoch {epoch}")
                     optmizer.zero_grad()
                     
-                    x_low = self.to_torch(data[0])
-                    x_high = self.to_torch(data[1])
-                    x_upscaled = self.IP.image_upscale(x_low, x_high.size())  
+                    x_low = data[1].to(self.device)
+                    x_high = data[0].to(self.device)
+                    x_upscaled = self.IP.image_upscale(x_low, x_high.size())
 
                     t = torch.randint(1, self.number_noise_steps, (self.args.batch_size, )).to(self.device)
 
-                    xt_noisy, normal_distribution = operations.produce_noise(x_high, t)
-                    xt_noisy = self.to_torch(xt_noisy)
-                    normal_distribution = self.to_torch(normal_distribution)
+                    xt_noisy, normal_distribution = self.produce_noise(x_high, t)
+                    xt_noisy = xt_noisy.to(self.device)
+                    normal_distribution = normal_distribution.to(self.device)
 
-                    noise_level = self.to_torch([self.gamma_prev[t+1]]).unsqueeze(-1)   #This model does not use t for the embeddin, they use a variation of gamma
+                    noise_level = self.gamma_prev[t+1].unsqueeze(-1)   #This model does not use t for the embeddin, they use a variation of gamma
                     
-                    sinusoidal_time_embeding = self.to_torch(sin_time_embeding(noise_level)) #This needs to be done because the UNET only accepts the time tensor when it is transformed
+                    sinusoidal_time_embeding = sin_time_embeding(noise_level, device = self.device) #This needs to be done because the UNET only accepts the time tensor when it is transformed
 
                     xt_cat = torch.cat((xt_noisy, x_upscaled), dim=1)
-
                     x_pred = model(xt_cat, sinusoidal_time_embeding)    #Predicted images from the UNET by inputing the image and the time without the sinusoidal embeding
-                    x_pred = self.to_torch(x_pred)
+                    x_pred = x_pred.to(self.device)
 
                     Lsimple = loss(x_pred, normal_distribution).to(self.device)
                     
@@ -120,17 +113,17 @@ class operations:
         model.eval()
 
         x_noise = torch.randn(batch_size, channel_size, self.image_size, self.image_size)
-        x_noise = self.to_torch(x_noise)
+        x_noise = x_noise.to(self.device)
 
         x_upsample = self.IP.image_upscale(x_low_res, x_noise.size())
-        x_upsample = self.to_torch(x_upsample)
+        x_upsample = x_upsample.to(self.device)
 
         
         with torch.no_grad():
             for i in tqdm(reversed(range(1, self.number_noise_steps))):
                 x_cat = torch.cat([x_noise, x_upsample])
 
-                t = self.to_torch((torch.ones(batch_size) * i))
+                t = (torch.ones(batch_size, dtype= torch.float32) * i).to(self.device)
                 
                 if i == 0:
                     z = torch.zeros(x_noise.size())
@@ -138,7 +131,7 @@ class operations:
                     z = torch.randn_like(x_noise)
                 
                 posterior_variance = self.beta * (1. - self.gamma_prev)/(1. - self.gamma)   #This implementation will not use the standard variance for the posterior a change in variance can be done in order to test is's importance in the model
-                log_var_arg_2 = self.to_torch(torch.ones(posterior_variance.size()))
+                log_var_arg_2 = torch.ones(posterior_variance.size(), dtype=torch.float32).to(self.device)
                 log_posterior_variance = torch.log(torch.maximum(posterior_variance, log_var_arg_2))
                 model_variance = torch.exp(0.5 * log_posterior_variance)
 
@@ -147,9 +140,9 @@ class operations:
                 gamma_buffer = self.gamma_buffer[t][:, None, None, None]
                 beta_buffer = self.beta[t][:, None, None, None]
 
-                noise_level = self.to_torch([self.gamma_prev[t]]).unsqueeze(-1)
+                noise_level = [self.gamma_prev[t]].unsqueeze(-1)
 
-                sinusoidal_noise_embeding = self.to_torch(sin_time_embeding(noise_level))
+                sinusoidal_noise_embeding = sin_time_embeding(noise_level, device = self.device)
 
                 pred_noise = model(x_cat, sinusoidal_noise_embeding)
                 
