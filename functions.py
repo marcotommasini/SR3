@@ -7,6 +7,7 @@ from utils import beta_schedule, sin_time_embeding, warmup_LR
 from functools import partial
 from tqdm import tqdm
 from dataset import image_process
+import time
 
 class operations:
     def __init__(self, args):
@@ -48,6 +49,7 @@ class operations:
 
 
     def train_model(self, model, dataloader, optmizer, loss, model_checkpoint = None):
+        print("Training started")
         model.train()
         LRS = warmup_LR(optmizer, self.args.initial_learning_rate, self.args.final_learning_rate, number_steps=1000)
         
@@ -60,6 +62,7 @@ class operations:
             epoch = 0
 
         while epoch < self.args.number_epochs:
+            print("epoch: ", epoch)
             list_losses = []
             with tqdm(dataloader, unit="batch") as tepoch:
                 for i, data in enumerate(tepoch):
@@ -83,7 +86,10 @@ class operations:
                     sinusoidal_time_embeding = sin_time_embeding(noise_level, device = self.device) #This needs to be done because the UNET only accepts the time tensor when it is transformed
 
                     xt_cat = torch.cat((xt_noisy, x_upscaled), dim=1)
+                    start_time = time.time_ns()
                     x_pred = model(xt_cat, sinusoidal_time_embeding)    #Predicted images from the UNET by inputing the image and the time without the sinusoidal embeding
+                    end_time = time.time_ns()
+                    print("time ",start_time - end_time)
                     x_pred = x_pred.to(self.device)
 
                     Lsimple = loss(x_pred, normal_distribution).to(self.device)

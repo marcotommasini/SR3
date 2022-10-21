@@ -10,6 +10,7 @@ from dataset import Dataset
 from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
+from UNET_test import UNet
 
 def main(param):
     parser = argparse.ArgumentParser(description='Diffusion model')
@@ -53,7 +54,7 @@ def main(param):
 
     dataloader = DataLoader(dataset, args.batch_size, drop_last=True)
 
-    model = UNET_SR3().to(args.device)
+    model = UNet().to(args.device)
 
     optmizer = torch.optim.Adam(model.parameters(), lr=args.initial_learning_rate)
 
@@ -64,8 +65,8 @@ def main(param):
     op_object.train_model(model, dataloader, optmizer, loss)
 
 if __name__ == "__main__":
-    main([])
-    
+    main(["-DD", "Data\\thumbnails128x128"])
+
 
 
 

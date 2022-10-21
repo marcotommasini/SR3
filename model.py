@@ -186,7 +186,6 @@ class UNET_SR3(nn.Module):
 
         skip_features = []
         for position_down, layer in enumerate(self.downs):
-            print("down")
             if isinstance(layer, ResnetBlock):
                 x = layer(x, time)
             else:
@@ -200,7 +199,6 @@ class UNET_SR3(nn.Module):
                 x = layer(x)
         
         for position_up, layer in enumerate(self.ups):
-            print("up")
             if isinstance(layer, ResnetBlock):
                 x = layer(torch.cat((x, skip_features.pop()), dim=1), time)
             else:
