@@ -64,7 +64,7 @@ def main(param):
     op_object.train_model(model, dataloader, optmizer, loss)
 
 if __name__ == "__main__":
-    main(['--dataset_directory', 'Data\\thumbnails128x128'])
+    main([])
     
 
 
