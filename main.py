@@ -6,13 +6,15 @@ import torch.nn as nn
 import argparse
 import numpy as np
 from model import UNET_SR3
-from Data.dataset import get_mean_std, unzip_file, DataSet_Faces
+from Data.dataset import get_mean_std, Dataset
 from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
+from dataset_transform import TransformDataset
+from Data.dataset import compute_metrics_images
 
 
-def main():
+def main(param):
     parser = argparse.ArgumentParser(description='Diffusion model')
 
     parser.add_argument('--device', type=str, default="cuda", help='Device to run the code on')
@@ -32,14 +34,27 @@ def main():
     parser.add_argument('-CD','--checkpoint_directory', type=str, default="", help='Input Checkpoints directory')
     parser.add_argument('-DD', '--dataset_directory', type=str, default="", help='FIle with images')
 
-    args = parser.parse_args()
+    args = parser.parse_args(param)
 
     print(args.checkpoint_directory)
     print(args.dataset_directory)
 
     #Load the dataloader object already with batch 16
 
-    dataloader = torch.load(args.dataset_directory)
+    mean_HIGH = [0.5 , 0.5, 0.5]
+    std_HIGH = [0.5 , 0.5, 0.5 ]
+
+    mean_LOW = [0.5, 0.5, 0.5]
+    std_LOW = [0.5 , 0.5 , 0.5]
+
+
+
+    transform_HIGH  = [transforms.Normalize(mean_HIGH, std_HIGH)]
+    transform_LOW = [transforms.Normalize(mean_LOW, std_LOW)]
+
+    dataset = Dataset(args.dataset_directory, transform_lists= (transform_HIGH, transform_LOW))
+
+    dataloader = DataLoader(dataset, args.batch_size, drop_last=True)
 
     model = UNET_SR3()
 
@@ -52,7 +67,8 @@ def main():
     op_object.train_model(model, dataloader, optmizer, loss)
 
 if __name__ == "__main__":
-    main()
+    main([])
+    
 
 
 

@@ -130,8 +130,6 @@ class UNET_SR3(nn.Module):
         resolution_to_use_attention = 8
         dropout = 0
         
-
-        
         #I will add each block to a list and then use the module function to make it into a sequential
 
         #Downs blocks

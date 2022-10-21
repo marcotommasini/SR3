@@ -18,7 +18,7 @@ def save_dataloader():
 
     transform_HIGH  = transforms.Compose([transforms.ToTensor(), transforms.Normalize((mean_HIGH), (std_HIGH))])
     transform_LOW = transforms.Compose([transforms.ToTensor(), transforms.Normalize((mean_LOW), (std_LOW))])
-    dataset_directory = "Data\\thumbnails128x128"
+    dataset_directory =  "Data\\thumbnails128x128"
 
     dataset = DataSet_Faces(dataset_directory)
 
