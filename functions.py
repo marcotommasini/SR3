@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import argparse
 import numpy as np
-from utils import beta_schedule, sin_time_embeding, warmup_LR
+from utils import beta_schedule, sin_time_embeding, warmup_LR, PositionalEncoding
 from functools import partial
 from tqdm import tqdm
 from dataset import image_process
@@ -18,6 +18,7 @@ class operations:
         self.device = args.device
         self.args = args
         self.learning_rate = 0
+        self.time_embedding = PositionalEncoding()
 
         schedule = beta_schedule(self.beta_start, self.beta_end, self.number_noise_steps)
         self.IP = image_process()
@@ -81,9 +82,9 @@ class operations:
                     xt_noisy = xt_noisy.to(self.device)
                     normal_distribution = normal_distribution.to(self.device)
 
-                    noise_level = self.gamma_prev[t+1].unsqueeze(-1)   #This model does not use t for the embeddin, they use a variation of gamma
+                    noise_level = self.gamma_prev[t+1]   #This model does not use t for the embeddin, they use a variation of gamma
                     
-                    sinusoidal_time_embeding = sin_time_embeding(noise_level, device = self.device) #This needs to be done because the UNET only accepts the time tensor when it is transformed
+                    sinusoidal_time_embeding = self.time_embedding(noise_level) #This needs to be done because the UNET only accepts the time tensor when it is transformed
 
                     xt_cat = torch.cat((xt_noisy, x_upscaled), dim=1)
                     start_time = time.time_ns()
@@ -148,7 +149,7 @@ class operations:
 
                 noise_level = [self.gamma_prev[t]].unsqueeze(-1)
 
-                sinusoidal_noise_embeding = sin_time_embeding(noise_level, device = self.device)
+                sinusoidal_noise_embeding = self.time_embedding(noise_level)
 
                 pred_noise = model(x_cat, sinusoidal_noise_embeding)
                 
