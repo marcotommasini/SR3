@@ -21,7 +21,6 @@ class operations:
         self.learning_rate = 0
 
         schedule = beta_schedule(self.beta_start, self.beta_end, self.number_noise_steps)
-        self.IP = image_process()
 
 
         if args.noise_schedule == "linear":
