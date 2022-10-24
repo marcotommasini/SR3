@@ -50,8 +50,8 @@ class Dataset(data.Dataset):
 
 class image_process:
   def image_upscale(self, x_low, x_high_size):
-    batch, channel, height, width = x_high_size
-    up_object = transforms.Resize((height, width))
+    channel, height, width = x_high_size
+    up_object = transforms.Resize((height, width), )
     up_image = up_object(x_low)
     return up_image
 

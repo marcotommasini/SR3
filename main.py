@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
 from UNET_test import UNet
+import sys
 
 def main(param):
     parser = argparse.ArgumentParser(description='Diffusion model')
