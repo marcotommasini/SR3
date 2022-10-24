@@ -15,6 +15,35 @@ from functools import partial
 from tqdm import tqdm
 
 
+class Dataset_np(data.Dataset):
+    def __init__(self, dataset_directory = None, image_dimensions = (128,128), downsample_dimensions = (16,16), transform_lists = None):
+        super().__init__()
+        self.dataset_directory = dataset_directory
+        self.image_dimensions = image_dimensions
+        self.downsample_dimensions = downsample_dimensions
+        self.list_images = os.listdir(dataset_directory)
+
+
+    def __len__(self):
+        return len(self.list_images)
+
+    def __getitem__(self, index):
+        target_path = os.path.join(self.dataset_directory, self.list_images[index])
+        
+        Image_HIGH = np.array(Image.open(target_path).convert("RGB"), np.float32)/255.0
+        Image_LOW = np.array(Image.open(target_path).convert("RGB").resize(self.downsample_dimensions, Image.BICUBIC), np.float32)/255.0
+
+        Image_LOW = np.resize(Image_LOW, (128,128, 3),)
+
+        Image_HIGH = (Image_HIGH - 0.5) * 2
+        Image_LOW = (Image_LOW - 0.5) * 2
+
+        Image_HIGH = Image_HIGH.transpose((2, 0, 1))
+        Image_LOW = Image_LOW.transpose((2, 0, 1))
+        return Image_HIGH, Image_LOW
+
+
+
 class Dataset(data.Dataset):
     def __init__(self, dataset_directory = None, image_dimensions = (128,128), downsample_dimensions = (16,16), transform_lists = None):
         super().__init__()
@@ -51,7 +80,7 @@ class Dataset(data.Dataset):
 class image_process:
   def image_upscale(self, x_low, x_high_size):
     channel, height, width = x_high_size
-    up_object = transforms.Resize((height, width))
+    up_object = transforms.Resize((height, width), )
     up_image = up_object(x_low)
     return up_image
 
