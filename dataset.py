@@ -28,6 +28,8 @@ class Dataset(data.Dataset):
 
         self.transforms_HIGH.insert(0,transforms.ToTensor())
         self.transforms_LOW.append(transforms.Resize(self.downsample_dimensions))
+
+        self.IP = image_process()
         
 
     def __len__(self):
@@ -41,8 +43,9 @@ class Dataset(data.Dataset):
 
         Image_HIGH = apply_HIGH(Image.open(target_path).convert("RGB"))
         Image_LOW = apply_LOW(Image_HIGH)
-        
 
+        Image_LOW = self.IP.image_upscale(Image_LOW, Image_HIGH.size())
+        
         return Image_HIGH, Image_LOW
 
 class image_process:

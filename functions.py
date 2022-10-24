@@ -1,4 +1,5 @@
 import os
+from unittest import loader
 import torch
 import torch.nn as nn
 import argparse
@@ -65,53 +66,45 @@ class operations:
         while epoch < self.args.number_epochs:
             print("epoch: ", epoch)
             list_losses = []
-            with tqdm(dataloader, unit="batch") as tepoch:
-                for i, data in enumerate(tepoch):
-                    self.learning_rate = LRS.linear(i) #updating the value of the learning rate
+            for i, data in tqdm(enumerate(dataloader)):
+                self.learning_rate = LRS.linear(i) #updating the value of the learning rate
 
-                    tepoch.set_description(f"Epoch {epoch}")
-                    optmizer.zero_grad()
-                    
-                    x_low = data[1].to(self.device)
-                    x_high = data[0].to(self.device)
-                    x_upscaled = self.IP.image_upscale(x_low, x_high.size())
+                optmizer.zero_grad()
+                
+                x_low = data[1].to(self.device)
+                x_high = data[0].to(self.device)
 
-                    t = torch.randint(1, self.number_noise_steps, (self.args.batch_size, )).to(self.device)
+                t = torch.randint(1, self.number_noise_steps, (self.args.batch_size, )).to(self.device)
 
-                    xt_noisy, normal_distribution = self.produce_noise(x_high, t)
-                    xt_noisy = xt_noisy.to(self.device)
-                    normal_distribution = normal_distribution.to(self.device)
+                xt_noisy, normal_distribution = self.produce_noise(x_high, t)
+                xt_noisy = xt_noisy.to(self.device)
+                normal_distribution = normal_distribution.to(self.device)
 
-                    noise_level = self.gamma_prev[t+1]   #This model does not use t for the embeddin, they use a variation of gamma
-                    
-                    sinusoidal_time_embeding = self.time_embedding(noise_level) #This needs to be done because the UNET only accepts the time tensor when it is transformed
+                noise_level = self.gamma_prev[t+1]   #This model does not use t for the embeddin, they use a variation of gamma
+                
+                sinusoidal_time_embeding = self.time_embedding(noise_level) #This needs to be done because the UNET only accepts the time tensor when it is transformed
 
-                    xt_cat = torch.cat((xt_noisy, x_upscaled), dim=1)
-                    start_time = time.time_ns()
-                    x_pred = model(xt_cat, sinusoidal_time_embeding)    #Predicted images from the UNET by inputing the image and the time without the sinusoidal embeding
-                    end_time = time.time_ns()
-                    print("time ",start_time - end_time)
-                    x_pred = x_pred.to(self.device)
+                xt_cat = torch.cat((xt_noisy, x_low), dim=1)
+                x_pred = model(xt_cat, sinusoidal_time_embeding)    #Predicted images from the UNET by inputing the image and the time without the sinusoidal embeding
+                x_pred = x_pred.to(self.device)
 
-                    Lsimple = loss(x_pred, normal_distribution).to(self.device)
-                    
-                    list_losses.append(Lsimple.item())
-                    Lsimple.backward()
-                    optmizer.step()
+                Lsimple = loss(x_pred, normal_distribution).to(self.device)
+                
+                list_losses.append(Lsimple.item())
+                Lsimple.backward()
+                optmizer.step()
 
-                    tepoch.set_postfix(loss=Lsimple.item())
+            epoch += 1
 
-                epoch += 1
-
-                EPOCH = epoch
-                PATH = self.args.checkpoint_directory       
-                torch.save({
-                    'epoch': EPOCH,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optmizer.state_dict(),
-                    'LRSeg': self.learning_rate,
-                    }, PATH)
-                print("checkpoint saved")
+            EPOCH = epoch
+            PATH = self.args.checkpoint_directory       
+            torch.save({
+                'epoch': EPOCH,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optmizer.state_dict(),
+                'LRSeg': self.learning_rate,
+                }, PATH)
+            print("checkpoint saved")
 
 
     def sample_image(self, model, x_low_res):
@@ -122,8 +115,7 @@ class operations:
         x_noise = torch.randn(batch_size, channel_size, self.image_size, self.image_size)
         x_noise = x_noise.to(self.device)
 
-        x_upsample = self.IP.image_upscale(x_low_res, x_noise.size())
-        x_upsample = x_upsample.to(self.device)
+        x_upsample = x_low_res.to(self.device)
 
         
         with torch.no_grad():
