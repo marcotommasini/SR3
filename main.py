@@ -10,7 +10,6 @@ from dataset import Dataset
 from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
-from UNET_test import UNet
 import sys
 
 def main(param):
@@ -55,7 +54,7 @@ def main(param):
 
     dataloader = DataLoader(dataset, args.batch_size, drop_last=True)
 
-    model = UNet().to(args.device)
+    model = UNET_SR3().to(args.device)
 
     optmizer = torch.optim.Adam(model.parameters(), lr=args.initial_learning_rate)
 

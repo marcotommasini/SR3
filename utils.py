@@ -7,30 +7,17 @@ import torch
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader
+import math
+import sys
 
 
 
-def sin_time_embeding(t, number_channels = 32, device = "cuda"):
+def sin_time_embeding(t, number_channels = 256, device = "cuda"):
   inv_freq = 1.0 / (10000 ** (torch.arange(0, number_channels, 2).float() / number_channels)).to(device)
   pos_enc_a = torch.sin(t.repeat(1, number_channels // 2) * inv_freq)
   pos_enc_b = torch.cos(t.repeat(1, number_channels // 2) * inv_freq)
   pos_enc = torch.cat([pos_enc_a, pos_enc_b], dim=-1)
   return pos_enc
-
-class PositionalEncoding(nn.Module):
-  def __init__(self, dim = 32):
-      super().__init__()
-      self.dim = dim
-
-  def forward(self, noise_level):
-      count = self.dim // 2
-      step = torch.arange(count, dtype=noise_level.dtype,
-                          device=noise_level.device) / count
-      encoding = noise_level.unsqueeze(
-          1) * torch.exp(-math.log(1e4) * step.unsqueeze(0))
-      encoding = torch.cat(
-          [torch.sin(encoding), torch.cos(encoding)], dim=-1)
-      return encoding
 
 
 class warmup_LR():
