@@ -154,7 +154,6 @@ class UNET_SR3(nn.Module):
                 DOWNS.append(DownSample(current_channel_input))
                 featured_channels.append(current_channel_input)
                 current_resolution = current_resolution/2
-
         self.downs = nn.ModuleList(DOWNS)   #Creating the sequential with the downblocks
     	
         #Middle blocks
