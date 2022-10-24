@@ -34,8 +34,8 @@ class operations:
             self.beta = schedule.cosine()
         
         self.alpha = 1 - self.beta
-        self.gamma = torch.cumprod(self.alpha, dim = 0)
-        self.gamma_prev = torch.tensor(np.append(1., self.gamma[:-1]), dtype=torch.float32).to(self.device)
+        self.gamma = torch.cumprod(self.alpha, dim = 0).to(self.device)
+        self.gamma_prev = torch.tensor(np.append(1., self.gamma[:-1].cpu().detach().numpy()), dtype=torch.float32).to(self.device)
         self.sqrt_gamma_prev = torch.sqrt(self.gamma_prev)
 
         self.counter_iterations = 0
