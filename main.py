@@ -54,27 +54,15 @@ def main(param):
 
     dataloader = DataLoader(dataset, args.batch_size, drop_last=True)
 
-    for data in dataloader:
-        high = data[0][0]
-        low = data[1][0]
+    model = UNet().to(args.device)
 
-        trs = transforms.ToPILImage()
-        HIGH = trs(high)
-        LOW = trs(low)
+    optmizer = torch.optim.Adam(model.parameters(), lr=args.initial_learning_rate)
 
-        LOW.show()     
-        HIGH.show()  
-        
+    loss = nn.MSELoss()
 
-    # model = UNet().to(args.device)
+    op_object = op(args)
 
-    # optmizer = torch.optim.Adam(model.parameters(), lr=args.initial_learning_rate)
-
-    # loss = nn.MSELoss()
-
-    # op_object = op(args)
-
-    # op_object.train_model(model, dataloader, optmizer, loss)
+    op_object.train_model(model, dataloader, optmizer, loss)
 
 if __name__ == "__main__":
     main(["-DD", "Data\\thumbnails128x128"])
