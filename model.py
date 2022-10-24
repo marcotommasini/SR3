@@ -165,6 +165,7 @@ class UNET_SR3(nn.Module):
         
         #Up blocks
         UPS = []
+        print(featured_channels)
         for index in reversed(range(num_multipliers)):
             flag_last = (index == 0)
             use_attention = (current_resolution == resolution_to_use_attention)
@@ -178,8 +179,14 @@ class UNET_SR3(nn.Module):
                 UPS.append(UpSample(current_channel_input))
                 current_resolution = current_resolution * 2
         self.ups = nn.ModuleList(UPS)
-
+        
         self.output_conv = smallBlock(current_channel_input, out_channels)
+        for i in DOWNS:
+            print(i)
+            print("\n \n")
+        # for j in UPS:
+        #     print(j)
+        #     print("\n \n")
 
     def forward(self, x, time):
 

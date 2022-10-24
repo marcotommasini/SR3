@@ -52,18 +52,8 @@ def main(param):
 
     dataset = Dataset(args.dataset_directory, transform_lists= (transform_HIGH, transform_LOW))
 
-    dataloader = DataLoader(dataset, args.batch_size, drop_last=True)
+    dataloader = DataLoader(dataset, args.batch_size, drop_last=True, num_workers=)
 
-    # for data in dataloader:
-    #     print((data[0][0].size()))
-    #     print((data[1][0].size()))
-    #     trs = transforms.ToPILImage()
-        
-    #     im = trs(data[0][0])
-    #     im2 = trs(data[1][0])
-
-    #     im.show()
-    #     im2.show()
     model = UNET_SR3().to(args.device)
 
     optmizer = torch.optim.Adam(model.parameters(), lr=args.initial_learning_rate)
