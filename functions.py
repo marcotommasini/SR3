@@ -159,7 +159,7 @@ class operations:
                 beta_buffer = self.beta[i][:, None, None, None]
                 gamma_prev_buffer = self.gamma_prev[i][:, None, None, None]
                 sqrt_recip_alphas_cumprod_buffer = self.sqrt_recip_alphas_cumprod[i]
-                sqrt_recipm1_alphas_cumprod_buffer = self.sqrt_recipm1_alphas_cumprod[i][:, None, None, None]
+                sqrt_recipm1_alphas_cumprod_buffer = self.sqrt_recipm1_alphas_cumprod[i]
                 posterior_mean_coef2_buffer = self.posterior_mean_coef1[i]
                 posterior_mean_coef2_buffer = self.posterior_mean_coef2[i]
                 log_posterior_variance_buffer = self.to_torch(self.log_posterior_variance[i])
