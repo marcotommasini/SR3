@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
 import sys
-
+  
 def main(param):
     parser = argparse.ArgumentParser(description='Diffusion model')
 
@@ -52,7 +52,7 @@ def main(param):
 
     dataset = Dataset(args.dataset_directory, transform_lists= (transform_HIGH, transform_LOW))
 
-    dataloader = DataLoader(dataset, args.batch_size, drop_last=True, num_workers=)
+    dataloader = DataLoader(dataset, args.batch_size, drop_last=True, num_workers=2)
 
     model = UNET_SR3().to(args.device)
 
@@ -62,8 +62,26 @@ def main(param):
 
     op_object = op(args)
 
-    op_object.train_model(model, dataloader, optmizer, loss)
+    if args.use_checkpoints == "True":
+      checkpoint_object = torch.load("/content/drive/MyDrive/SR3/checkpoint_directorycheckpoint.pt")
 
+    input_mode = input("Mode")
+
+    if input_mode == "train":
+      op_object.train_model(model, dataloader, optmizer, loss, model_checkpoint = checkpoint_object)
+    elif input_mode == "sample":
+      for data in dataloader:
+        x_low = data[1].to(args.device)
+        x_high = data[0].to(args.device)
+        x_sample = op_object.sample_image(model, x_low)
+
+        for image in x_sample:
+          print(type(image))
+          print(image.size())
+          trans = transforms.ToPILImage()
+          out = trans(image)
+          out.show()
+        sys.exit()
 if __name__ == "__main__":
     main(["-DD", "Data\\thumbnails128x128"])
 

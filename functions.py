@@ -19,23 +19,45 @@ class operations:
         self.device = args.device
         self.args = args
         self.learning_rate = 0
+        self.to_torch = partial(torch.tensor, dtype=torch.float32, device=args.device)
 
         schedule = beta_schedule(self.beta_start, self.beta_end, self.number_noise_steps)
 
 
         if args.noise_schedule == "linear":
-            self.beta = schedule.linear()
+            betas = schedule.linear()
         elif args.noise_schedule == "quadratic":
-            self.beta = schedule.quadratic()
+            betas = schedule.quadratic()
         elif args.noise_schedule == "sigmoid":
-            self.beta = schedule.sigmoid() 
+            betas = schedule.sigmoid() 
         elif args.noise_schedule == "cosine":
-            self.beta = schedule.cosine()
+            betas = schedule.cosine()
+
         
+
+        self.beta = betas.detach().cpu().numpy()
         self.alpha = 1 - self.beta
-        self.gamma = torch.cumprod(self.alpha, dim = 0).to(self.device)
-        self.gamma_prev = torch.tensor(np.append(1., self.gamma[:-1].cpu().detach().numpy()), dtype=torch.float32).to(self.device)
-        self.sqrt_gamma_prev = torch.sqrt(self.gamma_prev)
+        self.gamma =  np.cumprod(self.alpha, axis = 0)
+        self.gamma_prev = np.append(1., self.gamma[:-1])
+        self.sqrt_gamma_prev = np.sqrt(np.append(1., self.gamma[:-1]))
+        self.posterior_mean_coef1 = self.beta * np.sqrt(self.sqrt_gamma_prev) / (1. - self.gamma)
+        self.posterior_mean_coef2 = (1. - self.sqrt_gamma_prev) * np.sqrt(self.alpha) / (1. - self.gamma)
+        self.sqrt_recip_alphas_cumprod = np.sqrt(1. / self.gamma)
+        self.sqrt_recipm1_alphas_cumprod = np.sqrt(1. / self.gamma - 1)
+
+        self.posterior_variance = self.beta * (1. - self.gamma_prev)/(1. - self.gamma)   #This implementation will not use the standard variance for the posterior a change in variance can be done in order to test is's importance in the model
+        self.log_posterior_variance = np.log(np.maximum(self.posterior_variance, 1e-20))
+        
+        #Transforming into tensor float32
+        self.beta = self.to_torch(self.beta).unsqueeze(-1)
+        self.alpha = self.to_torch(self.alpha).unsqueeze(-1)
+        self.gamma = self.to_torch(self.gamma).unsqueeze(-1)
+        self.gamma_prev = self.to_torch(self.gamma_prev).unsqueeze(-1)
+        self.sqrt_gamma_prev = self.to_torch(self.sqrt_gamma_prev).unsqueeze(-1)
+        self.sqrt_recip_alphas_cumprod = self.to_torch(self.sqrt_recip_alphas_cumprod).unsqueeze(-1)
+        self.sqrt_recipm1_alphas_cumprod = self.to_torch(self.sqrt_recipm1_alphas_cumprod).unsqueeze(-1)
+        posterior_mean_coef1 = self.to_torch(self.posterior_mean_coef1).unsqueeze(-1)
+        self.posterior_mean_coef2 = self.to_torch(self.posterior_mean_coef2).unsqueeze(-1)
 
         self.counter_iterations = 0
 
@@ -95,7 +117,7 @@ class operations:
             epoch += 1
 
             EPOCH = epoch
-            PATH = self.args.checkpoint_directory       
+            PATH = self.args.checkpoint_directory + "/checkpoint.pt"      
             torch.save({
                 'epoch': EPOCH,
                 'model_state_dict': model.state_dict(),
@@ -118,33 +140,43 @@ class operations:
         
         with torch.no_grad():
             for i in tqdm(reversed(range(1, self.number_noise_steps))):
-                x_cat = torch.cat([x_noise, x_upsample])
+                x_cat = torch.cat([x_noise, x_upsample], 1)
 
-                t = (torch.ones(batch_size, dtype= torch.float32) * i).to(self.device)
+                noise_level = torch.FloatTensor([self.sqrt_gamma_prev[i]]).repeat(batch_size, 1).to(self.args.device)
                 
                 if i == 0:
                     z = torch.zeros(x_noise.size())
                 else:
                     z = torch.randn_like(x_noise)
-                
-                posterior_variance = self.beta * (1. - self.gamma_prev)/(1. - self.gamma)   #This implementation will not use the standard variance for the posterior a change in variance can be done in order to test is's importance in the model
-                log_var_arg_2 = torch.ones(posterior_variance.size(), dtype=torch.float32).to(self.device)
-                log_posterior_variance = torch.log(torch.maximum(posterior_variance, log_var_arg_2))
-                model_variance = torch.exp(0.5 * log_posterior_variance)
 
-                
-                alpha_buffer = self.alpha[t][:, None, None, None]
-                gamma_buffer = self.gamma_buffer[t][:, None, None, None]
-                beta_buffer = self.beta[t][:, None, None, None]
+                # print(self.alpha.size())
+                # print(self.beta.size())
+                # print(self.gamma.size())
+                # import sys
+                # sys.exit()
+                alpha_buffer = self.alpha[i][:,None, None, None]
+                gamma_buffer = self.gamma[i][:, None, None, None]
+                beta_buffer = self.beta[i][:, None, None, None]
+                gamma_prev_buffer = self.gamma_prev[i][:, None, None, None]
+                sqrt_recip_alphas_cumprod_buffer = self.sqrt_recip_alphas_cumprod[i]
+                sqrt_recipm1_alphas_cumprod_buffer = self.sqrt_recipm1_alphas_cumprod[i][:, None, None, None]
+                posterior_mean_coef2_buffer = self.posterior_mean_coef1[i]
+                posterior_mean_coef2_buffer = self.posterior_mean_coef2[i]
+                log_posterior_variance_buffer = self.to_torch(self.log_posterior_variance[i])
 
-                noise_level = self.gamma_prev[t].unsqueeze(-1)
-
+                #Calculating the mean of the posterior
+                noise_level = torch.FloatTensor([self.sqrt_gamma_prev[i]]).repeat(batch_size, 1).to(self.args.device)
                 sinusoidal_noise_embeding = sin_time_embeding(noise_level, device=self.device)
-
                 pred_noise = model(x_cat, sinusoidal_noise_embeding)
-                
-                part2 = ((1 - alpha_buffer)/(torch.sqrt(1 - gamma_buffer))) * pred_noise
-                xtm = ((1/torch.sqrt(alpha_buffer)) * (x_noise - part2)) + model_variance * z
+
+                x_recon = sqrt_recip_alphas_cumprod_buffer* x_noise - sqrt_recipm1_alphas_cumprod_buffer * pred_noise
+                x_recon.clamp_(-1., 1.)
+                model_mean =  posterior_mean_coef2_buffer * x_recon + posterior_mean_coef2_buffer * x_noise
+
+                #Calculating the variance of the posterior
+                model_variance = (0.5 * log_posterior_variance_buffer).exp()
+
+                xtm = model_mean + model_variance * z
 
                 x_noise = xtm
 

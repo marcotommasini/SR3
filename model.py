@@ -2,6 +2,7 @@ from turtle import forward
 import torch
 from torch import nn
 import torch.nn.functional as F
+import math
 import sys
 
 
@@ -13,7 +14,6 @@ class TimeDimensionMatching(nn.Module):
 
     def forward(self, x, time_embedded):
         batch = x.shape[0]
-        out = self.emb_layer(time_embedded)[:, :, None, None].repeat(1,1,x.size(-2), x.size(-1))
         out_final = x + self.emb_layer(time_embedded).view(batch, -1, 1, 1)
         return out_final
 
@@ -44,12 +44,11 @@ class DownSample(nn.Module):    #Downsample the block by 2 and maintain the same
 class ResnetBlock(nn.Module):
     def __init__(self, dim, dim_out, time_embedding_dimension, dropout = 0, norm_groups = 32, use_attention = False):
         super().__init__()
-        
         self.addTime = TimeDimensionMatching(time_embedding_dimension, dim_out)
         self.use_attention = use_attention
         self.block1 = smallBlock(dim, dim_out, norm_groups)
         self.block2 = smallBlock(dim_out, dim_out, norm_groups, dropout = dropout)
-        self.final_conv = nn.Conv2d(dim, dim_out, 1)
+        self.final_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
         if use_attention:
             self.att_block = SelfAttention(dim_out)
@@ -81,28 +80,36 @@ class smallBlock(nn.Module):
 
 
 
-class SelfAttention(nn.Module):     #Standard attention block
-    def __init__(self, in_channels):
+class SelfAttention(nn.Module):
+    def __init__(self, in_channel, n_head=1, norm_groups=32):
         super().__init__()
-        self.in_channels = in_channels
-        self.mha = nn.MultiheadAttention(in_channels, 4, batch_first=True)
-        self.layer_norm = nn.LayerNorm([in_channels])
 
-        self.feed_forward = nn.Sequential(
-            nn.LayerNorm([in_channels]),
-            nn.Linear(in_channels, in_channels),
-            nn.GELU(),
-            nn.Linear(in_channels, in_channels),)
-    def forward(self, x):
-        batch, channels, size_y, size_x = x.size()
-        x = x.view(-1, self.in_channels, int(size_y**2)).swapaxes(1,2)
+        self.n_head = n_head
 
-        norm_x = self.layer_norm(x)
-        attention_value, _ = self.mha(norm_x, norm_x, norm_x)
-        attention_value = attention_value + x
-        attention_value = self.feed_forward(attention_value) + attention_value
-        output = attention_value.swapaxes(2, 1).view(-1, self.in_channels, size_y, size_x)
-        return output
+        self.norm = nn.GroupNorm(norm_groups, in_channel)
+        self.qkv = nn.Conv2d(in_channel, in_channel * 3, 1, bias=False)
+        self.out = nn.Conv2d(in_channel, in_channel, 1)
+
+    def forward(self, input):
+        batch, channel, height, width = input.shape
+        n_head = self.n_head
+        head_dim = channel // n_head
+
+        norm = self.norm(input)
+        qkv = self.qkv(norm).view(batch, n_head, head_dim * 3, height, width)
+        query, key, value = qkv.chunk(3, dim=2)  # bhdyx
+
+        attn = torch.einsum(
+            "bnchw, bncyx -> bnhwyx", query, key
+        ).contiguous() / math.sqrt(channel)
+        attn = attn.view(batch, n_head, height, width, -1)
+        attn = torch.softmax(attn, -1)
+        attn = attn.view(batch, n_head, height, width, height, width)
+
+        out = torch.einsum("bnhwyx, bncyx -> bnchw", attn, value).contiguous()
+        out = self.out(out.view(batch, channel, height, width))
+
+        return out + input
 
 
 class UNET_SR3(nn.Module):

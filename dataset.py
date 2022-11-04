@@ -33,7 +33,7 @@ class Dataset_np(data.Dataset):
         Image_HIGH = np.array(Image.open(target_path).convert("RGB"), np.float32)/255.0
         Image_LOW = np.array(Image.open(target_path).convert("RGB").resize(self.downsample_dimensions, Image.BICUBIC), np.float32)/255.0
 
-        Image_LOW = np.resize(Image_LOW, (128,128, 3),)
+        Image_LOW = np.resize(Image_LOW, (128,128, 3))
 
         Image_HIGH = (Image_HIGH - 0.5) * 2
         Image_LOW = (Image_LOW - 0.5) * 2
