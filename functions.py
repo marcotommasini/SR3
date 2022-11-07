@@ -115,7 +115,8 @@ class operations:
                 list_losses.append(Lsimple.item())
                 Lsimple.backward()
                 optmizer.step()
-
+            if epoch % 5 == 0:
+                self.sample_image(model, x_low)
             epoch += 1
 
             EPOCH = epoch
@@ -127,6 +128,7 @@ class operations:
                 'LRSeg': self.learning_rate,
                 }, PATH)
             print("checkpoint saved")
+            print("Mean: ", np.mean(list_losses))
 
 
     def sample_image(self, model, x_low_res):
@@ -182,6 +184,30 @@ class operations:
         
         model.train()
         return x_noise
+    
+
+    def p_sample(self, model, condition_x=None):
+        shape = condition_x.shape
+        img = torch.randn(shape, device=self.device)
+        with torch.no_grad():
+            for t in tqdm(reversed(range(0, self.args.number_noise_steps)), desc='sampling loop time step', total=self.args.number_noise_steps):
+                batch_size = self.args.batch_size
+                noise_level = torch.FloatTensor([self.sqrt_gamma_prev[t]]).repeat(batch_size, 1).to(self.device)
+                noise_level = sin_time_embeding(noise_level, device=self.device)
+            
+                x_cat = torch.cat([condition_x, img], dim=1)
+                pred_noise = model(x_cat, noise_level)
+                x_recon = self.sqrt_recip_alphas_cumprod[t] * img - self.sqrt_recipm1_alphas_cumprod[t] * pred_noise
+
+                x_recon.clamp_(-1., 1.)
+                model_mean = self.posterior_mean_coef1[t] * x_recon + self.posterior_mean_coef2[t] * img
+                log_posterior_variance_buffer = self.to_torch(self.log_posterior_variance)
+                posterior_log_variance = log_posterior_variance_buffer[t]
+                
+                normal_noise = torch.randn_like(img) if t > 0 else torch.zeros_like(img)
+                img = model_mean + normal_noise * (0.5 * posterior_log_variance).exp()
+                result = img
+        return result
 
 
 

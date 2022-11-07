@@ -68,7 +68,7 @@ def main(param):
     else:
       checkpoint_object = None
       
-    input_mode = input("Mode")
+    input_mode = input("Mode: ")
 
     if input_mode == "train":
       op_object.train_model(model, dataloader, optmizer, loss, model_checkpoint = checkpoint_object)
@@ -77,7 +77,7 @@ def main(param):
       for data in dataloader:
         x_low = data[1].to(args.device)
         x_high = data[0].to(args.device)
-        x_sample = op_object.super_resolution(x_low)
+        x_sample = op_object.p_sample(model, x_low)
 
         for image in x_sample:
           print(type(image))
