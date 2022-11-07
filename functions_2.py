@@ -87,67 +87,30 @@ class GaussianDiffusion(nn.Module):
         self.register_buffer('posterior_mean_coef2', to_torch(
             (1. - alphas_cumprod_prev) * np.sqrt(alphas) / (1. - alphas_cumprod)))
 
-    def predict_start_from_noise(self, x_t, t, noise):
-        return self.sqrt_recip_alphas_cumprod[t] * x_t - \
-            self.sqrt_recipm1_alphas_cumprod[t] * noise
 
-    def q_posterior(self, x_start, x_t, t):
-        posterior_mean = self.posterior_mean_coef1[t] * \
-            x_start + self.posterior_mean_coef2[t] * x_t
-        posterior_log_variance_clipped = self.posterior_log_variance_clipped[t]
-        return posterior_mean, posterior_log_variance_clipped
-
-    def p_mean_variance(self, x, t, clip_denoised: bool, condition_x=None):
-        batch_size = x.shape[0]
-        noise_level = torch.FloatTensor(
-            [self.sqrt_alphas_cumprod_prev[t+1]]).repeat(batch_size, 1).to(x.device)
-        noise_level = sin_time_embeding(noise_level, device=self.device)
-        if condition_x is not None:
-            x_recon = self.predict_start_from_noise(
-                x, t=t, noise=self.denoise_fn(torch.cat([condition_x, x], dim=1), noise_level))
-        else:
-            x_recon = self.predict_start_from_noise(
-                x, t=t, noise=self.denoise_fn(x, noise_level))
-
-        if clip_denoised:
-            x_recon.clamp_(-1., 1.)
-
-        model_mean, posterior_log_variance = self.q_posterior(
-            x_start=x_recon, x_t=x, t=t)
-        return model_mean, posterior_log_variance
-
-    @torch.no_grad()
-    def p_sample(self, x, t, clip_denoised=True, condition_x=None):
-        model_mean, model_log_variance = self.p_mean_variance(
-            x=x, t=t, clip_denoised=clip_denoised, condition_x=condition_x)
-        noise = torch.randn_like(x) if t > 0 else torch.zeros_like(x)
-        return model_mean + noise * (0.5 * model_log_variance).exp()
-
-    @torch.no_grad()
-    def p_sample_loop(self, x_in, continous=False):
+    def p_sample(self,condition_x=None):
         device = self.betas.device
-        sample_inter = (1 | (self.num_timesteps//10))
-        if not self.conditional:
-            shape = x_in
-            img = torch.randn(shape, device=device)
-            ret_img = img
-            for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
-                img = self.p_sample(img, i)
-                if i % sample_inter == 0:
-                    ret_img = torch.cat([ret_img, img], dim=0)
-        else:
-            x = x_in
-            shape = x.shape
-            img = torch.randn(shape, device=device)
-            ret_img = x
-            for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
-                img = self.p_sample(img, i, condition_x=x)
-                if i % sample_inter == 0:
-                    ret_img = torch.cat([ret_img, img], dim=0)
-        if continous:
-            return ret_img
-        else:
-            return ret_img[-1]
+        shape = condition_x.shape
+        img = torch.randn(shape, device=device)
+        for t in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
+            batch_size = img.shape[0]
+            noise_level = torch.FloatTensor([self.sqrt_alphas_cumprod_prev[t+1]]).repeat(batch_size, 1).to(condition_x.device)
+            noise_level = sin_time_embeding(noise_level, device=self.device)
+        
+            x_cat = torch.cat([condition_x, img], dim=1)
+            pred_noise = self.denoise_fn(x_cat, noise_level)
+            x_recon = self.sqrt_recip_alphas_cumprod[t] * img - self.sqrt_recipm1_alphas_cumprod[t] * pred_noise
 
-    def super_resolution(self, x_in, continous=False):
-        return self.p_sample_loop(x_in, continous)
+            
+            x_recon.clamp_(-1., 1.)
+            model_mean = self.posterior_mean_coef1[t] * x_recon + self.posterior_mean_coef2[t] * img
+            posterior_log_variance = self.posterior_log_variance_clipped[t]
+            
+            normal_noise = torch.randn_like(img) if t > 0 else torch.zeros_like(img)
+            img = model_mean + normal_noise * (0.5 * posterior_log_variance).exp()
+            result = img
+        return result
+
+
+    def super_resolution(self, x_in):
+        return self.p_sample(x_in)
