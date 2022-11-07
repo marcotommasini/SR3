@@ -10,6 +10,7 @@ from tqdm import tqdm
 from dataset import image_process
 import time
 
+
 class operations:
     def __init__(self, args):
         self.number_noise_steps = args.number_noise_steps
@@ -62,11 +63,11 @@ class operations:
         self.counter_iterations = 0
 
 
-    def produce_noise(self, x, time_position):      #returns the noised image with a sample of a normal distribution
-        part1 = torch.sqrt(self.gamma[time_position])[:, None, None, None]
-        part2 = torch.sqrt(1 - self.gamma[time_position])[:, None, None, None]
-        noise = torch.randn_like(x)
-        return part1 * x + part2 * noise, noise
+    def produce_noise(self, x_start, continuous_sqrt_gamma_prev):      #returns the noised image with a sample of a normal distribution
+        noise = torch.randn_like(x_start)
+        part1 = continuous_sqrt_gamma_prev[:, None, None, None]
+        part2 = 1 - (continuous_sqrt_gamma_prev**2).sqrt()[:, None, None, None]
+        return part1 * x_start + part2 * noise, noise
 
 
 
@@ -94,17 +95,18 @@ class operations:
                 x_low = data[1].to(self.device)
                 x_high = data[0].to(self.device)
 
-                t = torch.randint(1, self.number_noise_steps, (self.args.batch_size, )).to(self.device)
+                t = np.random.randint(1, self.args.number_noise_steps + 1)
 
-                xt_noisy, normal_distribution = self.produce_noise(x_high, t)
-                xt_noisy = xt_noisy.to(self.device)
+                continuous_sqrt_gamma_prev = np.random.uniform(self.sqrt_gamma_prev[t-1], self.sqrt_gamma_prev[t], size = self.args.batch_size) 
+                continuous_sqrt_gamma_prev = self.to_torch(continuous_sqrt_gamma_prev)
+
+                xt_noisy, normal_distribution = self.produce_noise(x_high, continuous_sqrt_gamma_prev)
+
                 normal_distribution = normal_distribution.to(self.device)
+                continuous_sqrt_gamma_prev = continuous_sqrt_gamma_prev.unsqueeze(-1)
+                sinusoidal_time_embeding = sin_time_embeding(continuous_sqrt_gamma_prev, device=self.device) #This needs to be done because the UNET only accepts the time tensor when it is transformed
 
-                noise_level = self.gamma_prev[t].unsqueeze(-1)   #This model does not use t for the embeddin, they use a variation of gamma
-                
-                sinusoidal_time_embeding = sin_time_embeding(noise_level, device=self.device) #This needs to be done because the UNET only accepts the time tensor when it is transformed
-
-                xt_cat = torch.cat((xt_noisy, x_low), dim=1)
+                xt_cat = torch.cat((x_low, xt_noisy), dim=1)
                 x_pred = model(xt_cat, sinusoidal_time_embeding)    #Predicted images from the UNET by inputing the image and the time without the sinusoidal embeding
                 x_pred = x_pred.to(self.device)
 
@@ -149,18 +151,13 @@ class operations:
                 else:
                     z = torch.randn_like(x_noise)
 
-                # print(self.alpha.size())
-                # print(self.beta.size())
-                # print(self.gamma.size())
-                # import sys
-                # sys.exit()
                 alpha_buffer = self.alpha[i][:,None, None, None]
                 gamma_buffer = self.gamma[i][:, None, None, None]
                 beta_buffer = self.beta[i][:, None, None, None]
                 gamma_prev_buffer = self.gamma_prev[i][:, None, None, None]
                 sqrt_recip_alphas_cumprod_buffer = self.sqrt_recip_alphas_cumprod[i]
                 sqrt_recipm1_alphas_cumprod_buffer = self.sqrt_recipm1_alphas_cumprod[i]
-                posterior_mean_coef2_buffer = self.posterior_mean_coef1[i]
+                posterior_mean_coef1_buffer = self.posterior_mean_coef1[i]
                 posterior_mean_coef2_buffer = self.posterior_mean_coef2[i]
                 log_posterior_variance_buffer = self.to_torch(self.log_posterior_variance[i])
 
@@ -171,7 +168,7 @@ class operations:
 
                 x_recon = sqrt_recip_alphas_cumprod_buffer* x_noise - sqrt_recipm1_alphas_cumprod_buffer * pred_noise
                 x_recon.clamp_(-1., 1.)
-                model_mean =  posterior_mean_coef2_buffer * x_recon + posterior_mean_coef2_buffer * x_noise
+                model_mean =  posterior_mean_coef1_buffer * x_recon + posterior_mean_coef2_buffer * x_noise
 
                 #Calculating the variance of the posterior
                 model_variance = (0.5 * log_posterior_variance_buffer).exp()

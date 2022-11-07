@@ -11,7 +11,8 @@ from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
 import sys
-  
+from functions_2 import GaussianDiffusion
+
 def main(param):
     parser = argparse.ArgumentParser(description='Diffusion model')
 
@@ -64,16 +65,19 @@ def main(param):
 
     if args.use_checkpoints == "True":
       checkpoint_object = torch.load("/content/drive/MyDrive/SR3/checkpoint_directorycheckpoint.pt")
-
+    else:
+      checkpoint_object = None
+      
     input_mode = input("Mode")
 
     if input_mode == "train":
       op_object.train_model(model, dataloader, optmizer, loss, model_checkpoint = checkpoint_object)
     elif input_mode == "sample":
+      
       for data in dataloader:
         x_low = data[1].to(args.device)
         x_high = data[0].to(args.device)
-        x_sample = op_object.sample_image(model, x_low)
+        x_sample = op_object.super_resolution(x_low)
 
         for image in x_sample:
           print(type(image))
