@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from functions import operations as op
 import torchvision.transforms as transforms
 import sys
-from functions_2 import GaussianDiffusion
+import metrics
 
 def main(param):
     parser = argparse.ArgumentParser(description='Diffusion model')
@@ -64,7 +64,7 @@ def main(param):
     op_object = op(args)
 
     if args.use_checkpoints == "True":
-      checkpoint_object = torch.load("/content/drive/MyDrive/SR3/checkpoint_directorycheckpoint.pt")
+      checkpoint_object = torch.load(args.checkpoint_directory + "/checkpoint.pt")
     else:
       checkpoint_object = None
       
@@ -82,9 +82,8 @@ def main(param):
         for image in x_sample:
           print(type(image))
           print(image.size())
-          trans = transforms.ToPILImage()
-          out = trans(image)
-          out.show()
+          image = metrics.tensor2img(image)
+          metrics.save_img(image, "/content/drive/MyDrive/SR3/checkpoint_directory/fudeu_vida.png")
         sys.exit()
 if __name__ == "__main__":
     main(["-DD", "Data\\thumbnails128x128"])

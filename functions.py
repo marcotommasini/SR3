@@ -9,6 +9,9 @@ from functools import partial
 from tqdm import tqdm
 from dataset import image_process
 import time
+import torchvision.transforms as transforms
+import metrics
+
 
 
 class operations:
@@ -73,8 +76,10 @@ class operations:
 
     def train_model(self, model, dataloader, optmizer, loss, model_checkpoint = None):
         print("Training started")
+        print("Length: ", len(dataloader))
+
         model.train()
-        LRS = warmup_LR(optmizer, self.args.initial_learning_rate, self.args.final_learning_rate, number_steps=1000)
+        LRS = warmup_LR(optmizer, self.args.initial_learning_rate, self.args.final_learning_rate, number_steps=250)
         
         if self.args.use_checkpoints == "True" and model_checkpoint != None:  #Load the checkpoints of the model
             print("Using checkpoint")
@@ -87,17 +92,18 @@ class operations:
         while epoch < self.args.number_epochs:
             print("epoch: ", epoch)
             list_losses = []
+
             for i, data in tqdm(enumerate(dataloader)):
-                self.learning_rate = LRS.linear(i) #updating the value of the learning rate
+                self.learning_rate = LRS.linear(epoch * len(dataloader) + i) #updating the value of the learning rate
 
                 optmizer.zero_grad()
                 
                 x_low = data[1].to(self.device)
                 x_high = data[0].to(self.device)
 
-                t = np.random.randint(1, self.args.number_noise_steps + 1)
+                t = np.random.randint(1, self.args.number_noise_steps)
 
-                continuous_sqrt_gamma_prev = np.random.uniform(self.sqrt_gamma_prev[t-1], self.sqrt_gamma_prev[t], size = self.args.batch_size) 
+                continuous_sqrt_gamma_prev = np.random.uniform(self.sqrt_gamma_prev[t-1].cpu().numpy(), self.sqrt_gamma_prev[t].cpu().numpy(), size = self.args.batch_size) 
                 continuous_sqrt_gamma_prev = self.to_torch(continuous_sqrt_gamma_prev)
 
                 xt_noisy, normal_distribution = self.produce_noise(x_high, continuous_sqrt_gamma_prev)
@@ -111,13 +117,22 @@ class operations:
                 x_pred = x_pred.to(self.device)
 
                 Lsimple = loss(x_pred, normal_distribution).to(self.device)
-                
+                print(Lsimple)
+                print(Lsimple.size())
+                import sys
+                sys.exit()
                 list_losses.append(Lsimple.item())
                 Lsimple.backward()
                 optmizer.step()
-            if epoch % 5 == 0:
-                self.sample_image(model, x_low)
+            try:
+                if epoch % 5 == 0:
+                    image_sampled = self.p_sample(model, x_low)[0]
+                    image = metrics.tensor2img(image_sampled)
+                    metrics.save_img(image, "/content/drive/MyDrive/SR3/checkpoint_directory/fudeu_vida.png")
+            except:
+                pass 
             epoch += 1
+            print("LR: ", self.learning_rate)
 
             EPOCH = epoch
             PATH = self.args.checkpoint_directory + "/checkpoint.pt"      
@@ -178,9 +193,6 @@ class operations:
                 xtm = model_mean + model_variance * z
 
                 x_noise = xtm
-
-            x_noise = (x_noise.clamp(-1, 1) + 1) / 2
-            x_noise = (x_noise * 255).type(torch.uint8)
         
         model.train()
         return x_noise
