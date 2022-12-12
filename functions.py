@@ -19,7 +19,7 @@ class operations:
         self.number_noise_steps = args.number_noise_steps
         self.beta_start = args.beta_start
         self.beta_end = args.beta_end
-        self.image_size = args.target_image_size
+        self.image_size = args.target_image_size 
         self.device = args.device
         self.args = args
         self.learning_rate = 0
@@ -60,7 +60,7 @@ class operations:
         self.sqrt_gamma_prev = self.to_torch(self.sqrt_gamma_prev).unsqueeze(-1)
         self.sqrt_recip_alphas_cumprod = self.to_torch(self.sqrt_recip_alphas_cumprod).unsqueeze(-1)
         self.sqrt_recipm1_alphas_cumprod = self.to_torch(self.sqrt_recipm1_alphas_cumprod).unsqueeze(-1)
-        posterior_mean_coef1 = self.to_torch(self.posterior_mean_coef1).unsqueeze(-1)
+        self.posterior_mean_coef1 = self.to_torch(self.posterior_mean_coef1).unsqueeze(-1)
         self.posterior_mean_coef2 = self.to_torch(self.posterior_mean_coef2).unsqueeze(-1)
 
         self.counter_iterations = 0

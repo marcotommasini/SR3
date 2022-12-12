@@ -40,8 +40,8 @@ def main(param):
 
     #Load the dataloader object already with batch 16
 
-    mean_HIGH = [0.5 , 0.5, 0.5]
-    std_HIGH = [0.5 , 0.5, 0.5 ]
+    mean_HIGH = [0.5 , 0.5, 0.5 ]
+    std_HIGH = [0.5 , 0.5, 0.5  ]
 
     mean_LOW = [0.5, 0.5, 0.5]
     std_LOW = [0.5 , 0.5 , 0.5]

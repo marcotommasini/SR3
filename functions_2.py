@@ -88,7 +88,7 @@ class GaussianDiffusion(nn.Module):
             (1. - alphas_cumprod_prev) * np.sqrt(alphas) / (1. - alphas_cumprod)))
 
 
-    def p_sample(self,condition_x=None):
+    def p_sample(self,condition_x=None) :
         device = self.betas.device
         shape = condition_x.shape
         img = torch.randn(shape, device=device)
